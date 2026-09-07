@@ -99,16 +99,18 @@ async function PropertyDetailsPage({
           <DynamicPropertyMap
             countryCode={property.country}
           />
-<Reviews propertyId={property.id} />
-<ReviewForm propertyId={property.id} />
+
+          <Reviews propertyId={property.id} />
+
+          <ReviewForm propertyId={property.id} />
         </div>
 
         <div className='lg:col-span-4 flex flex-col items-center'>
           <BookingWrapper
-            propertyId={property.id}
-            price={property.price}
-            bookings={[]}
-          />
+  propertyId={property.id}
+  price={property.price}
+  bookings={property.Booking}
+/>
         </div>
       </section>
     </section>

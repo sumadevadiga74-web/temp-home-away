@@ -407,6 +407,15 @@ export const fetchPropertyDetails = async (id: string) => {
           profileImage: true,
         },
       },
+      Booking: {
+        where: {
+          paymentStatus: true,
+        },
+        select: {
+          checkIn: true,
+          checkOut: true,
+        },
+      },
     },
   });
 };
