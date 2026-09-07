@@ -26,7 +26,7 @@ const RentalsPage = async () => {
         </div>
       ) : (
         <div className='grid sm:grid-cols-2 lg:grid-cols-3 gap-6'>
-          {properties.map((property) => (
+         {properties.map((property: typeof properties[number]) => (
             <Link
               key={property.id}
               href={`/properties/${property.id}`}
