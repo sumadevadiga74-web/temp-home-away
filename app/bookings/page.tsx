@@ -31,7 +31,7 @@ const BookingsPage = async () => {
         </p>
       ) : (
         <div className="grid gap-6">
-          {bookings.map((booking) => (
+     {bookings.map((booking: typeof bookings[number]) => (
             <div
               key={booking.id}
               className="border rounded-lg p-6 shadow-sm"
