@@ -25,7 +25,7 @@ async function Reviews({
       <h2 className='text-2xl font-bold mb-6'>Reviews</h2>
 
       <div className='space-y-6'>
-        {reviews.map((review) => (
+       {reviews.map((review: any) => (
           <div key={review.id} className='border-b pb-6'>
             <div className='flex items-center gap-3'>
               <Image
