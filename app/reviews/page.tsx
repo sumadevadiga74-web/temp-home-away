@@ -25,7 +25,7 @@ const ReviewsPage = async () => {
       </h1>
 
       <div className='space-y-6'>
-        {reviews.map((review) => (
+      {reviews.map((review: any) => (
           <div
             key={review.id}
             className='border rounded-lg p-6'
