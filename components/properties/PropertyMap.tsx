@@ -21,7 +21,6 @@ const markerIcon = icon({
   iconUrl,
   iconSize: [20, 30],
 });
-
 function PropertyMap({
   countryCode,
 }: {
@@ -32,9 +31,12 @@ function PropertyMap({
     -0.09,
   ];
 
-  const location =
-    findCountryByCode(countryCode)?.location ||
-    defaultLocation;
+  const country = findCountryByCode(countryCode);
+
+  const location: [number, number] =
+    country?.latlng && country.latlng.length === 2
+      ? [country.latlng[0], country.latlng[1]]
+      : defaultLocation;
 
   return (
     <div className='mt-4'>

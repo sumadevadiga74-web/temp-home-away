@@ -1,15 +1,13 @@
-import * as z from 'zod';
+import { z } from 'zod';
 import { ZodSchema } from 'zod';
 
 export const profileSchema = z.object({
-  //firstName: z.string().max(5, { message: 'max length is 5' }),
   firstName: z.string().min(2, {
     message: 'first name must be at least 2 characters',
   }),
   lastName: z.string().min(2, {
-    message: 'first name must be at least 2 characters',}),
-  username: z.string().min(2,  {
-    message: 'first name must be at least 2 characters',}),
+    message: 'last name must be at least 2 characters',
+  }),
 });
 
 
@@ -19,7 +17,7 @@ export function validateWithZodSchema<T>(
 ): T {
   const result = schema.safeParse(data);
   if (!result.success) {
-    const errors = result.error.errors.map((error) => error.message);
+const errors = result.error.issues.map((error) => error.message);
 
     throw new Error(errors.join(', '));
   }
@@ -32,13 +30,13 @@ export const imageSchema = z.object({
 });
 
 function validateFile() {
-  const maxUploadSize = 1024 * 1024;
+ const maxUploadSize = 5 * 1024 * 1024;
   const acceptedFileTypes = ['image/'];
   return z
     .instanceof(File)
     .refine((file) => {
       return !file || file.size <= maxUploadSize;
-    }, 'File size must be less than 1 MB')
+    }, 'File size must be less than 5 MB')
     .refine((file) => {
       return (
         !file || acceptedFileTypes.some((type) => file.type.startsWith(type))
@@ -91,5 +89,17 @@ export const propertySchema = z.object({
     message: 'bahts amount must be a positive number.',
   }),
   amenities: z.string(),
+});
+
+export const reviewSchema = z.object({
+  rating: z.coerce.number().int().min(1).max(5),
+  comment: z
+    .string()
+    .min(10, {
+      message: 'Comment must be at least 10 characters.',
+    })
+    .max(1000, {
+      message: 'Comment must be less than 1000 characters.',
+    }),
 });
 

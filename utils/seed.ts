@@ -24,7 +24,7 @@ async function main() {
         bedrooms: 2,
         beds: 2,
         baths: 2,
-        amenities: [],
+     amenities: '',
         profileId: profile.clerkId,
       },
       {
@@ -40,7 +40,7 @@ async function main() {
         bedrooms: 1,
         beds: 2,
         baths: 1,
-        amenities: [],
+     amenities: '',
         profileId: profile.clerkId,
       },
     ],

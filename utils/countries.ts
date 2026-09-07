@@ -1,8 +1,9 @@
 import countries from 'world-countries';
 
 export const formattedCountries = countries.map((country) => ({
-  value: country.cca2,
-  label: `${country.flag} ${country.name.common}`,
+  name: country.name.common,
+  code: country.cca2,
+  flag: country.flag,
 }));
 
 export function findCountryByCode(code: string) {

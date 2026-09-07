@@ -9,14 +9,15 @@ import {
   profileSchema,
   propertySchema,
   imageSchema,
+  reviewSchema,
 } from '@/utils/schemas';
-
 import {
   renderError,
   validateWithZodSchema,
 } from '@/utils/helpers';
 
 import { uploadImage } from '@/utils/supabase';
+import { calculateTotals } from '@/utils/calculateTotals';
 
 // ----------------------
 // Get authenticated user
@@ -49,15 +50,33 @@ export async function createProfileAction(formData: FormData) {
   );
 
   const existingProfile = await db.profile.findUnique({
+  where: {
+    clerkId: user.id,
+  },
+});
+
+if (existingProfile) {
+  redirect('/profile');
+}
+
+const existingEmailProfile = await db.profile.findUnique({
+  where: {
+    email: user.emailAddresses[0].emailAddress,
+  },
+});
+
+if (existingEmailProfile) {
+  await db.profile.update({
     where: {
+      email: existingEmailProfile.email,
+    },
+    data: {
       clerkId: user.id,
     },
   });
 
-  if (existingProfile) {
-    redirect('/profile');
-  }
-
+  redirect('/profile');
+}
   await db.profile.create({
     data: {
       clerkId: user.id,
@@ -219,7 +238,7 @@ const fullPath = '/images/placeholder.jpg';
     }
 
     // create property
-    await db.Property.create({
+    await db.property.create({
       data: {
         ...validatedFields,
         image: fullPath,
@@ -242,7 +261,7 @@ export const fetchProperties = async ({
   search?: string;
   category?: string;
 }) => {
-  const properties = await db.Property.findMany({
+  const properties = await db.property.findMany({
     where: {
       ...(category ? { category } : {}),
       ...(search
@@ -266,6 +285,23 @@ export const fetchProperties = async ({
 
   return properties;
 };
+// ----------------------
+// Fetch user's properties
+// ----------------------
+export const fetchUserProperties = async () => {
+  const user = await getAuthUser();
+
+  const properties = await db.property.findMany({
+    where: {
+      profileId: user.id,
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
+
+  return properties;
+};
 
 // ----------------------
 // Fetch favorite ID
@@ -280,7 +316,7 @@ export const fetchFavoriteId = async ({
   // if user is not logged in, no favorite exists
   if (!user) return null;
 
-  const favorite = await db.Favorite.findFirst({
+  const favorite = await db.favorite.findFirst({
     where: {
       propertyId,
       profileId: user.id,
@@ -307,13 +343,13 @@ export const toggleFavoriteAction = async (prevState: {
 
   try {
     if (favoriteId) {
-      await db.Favorite.delete({
+      await db.favorite.delete({
         where: {
           id: favoriteId,
         },
       });
     } else {
-      await db.Favorite.create({
+      await db.favorite.create({
         data: {
           propertyId,
           profileId: user.id,
@@ -339,7 +375,7 @@ export const toggleFavoriteAction = async (prevState: {
 export const fetchFavorites = async () => {
   const user = await getAuthUser();
 
-  const favorites = await db.Favorite.findMany({
+  const favorites = await db.favorite.findMany({
     where: {
       profileId: user.id,
     },
@@ -359,9 +395,8 @@ export const fetchFavorites = async () => {
 
   return favorites.map((favorite) => favorite.property);
 };
-
 export const fetchPropertyDetails = async (id: string) => {
-  return await db.Property.findUnique({
+  return await db.property.findUnique({
     where: {
       id,
     },
@@ -374,4 +409,193 @@ export const fetchPropertyDetails = async (id: string) => {
       },
     },
   });
+};
+// ----------------------
+// Create booking
+// ----------------------
+export const createBookingAction = async (prevState: {
+  propertyId: string;
+  checkIn: Date;
+  checkOut: Date;
+}) => {
+  const user = await getAuthUser();
+
+  const { propertyId, checkIn, checkOut } = prevState;
+
+  const property = await db.property.findUnique({
+    where: {
+      id: propertyId,
+    },
+    select: {
+      price: true,
+    },
+  });
+
+  if (!property) {
+    return {
+      message: 'Property not found',
+    };
+  }
+
+  // Find the Profile belonging to the logged-in Clerk user
+  const profile = await db.profile.findUnique({
+    where: {
+      clerkId: user.id,
+    },
+  });
+
+  if (!profile) {
+    return {
+      message: 'Profile not found. Please make sure your profile is created.',
+    };
+  }
+
+  const { orderTotal, totalNights } = calculateTotals({
+    checkIn,
+    checkOut,
+    price: property.price,
+  });
+
+  let booking;
+
+  try {
+    booking = await db.booking.create({
+      data: {
+        id: crypto.randomUUID(),
+        checkIn,
+        checkOut,
+        orderTotal,
+        totalNights,
+        profileId: profile.clerkId,
+        propertyId,
+        paymentStatus: false,
+        updatedAt: new Date(),
+      },
+    });
+  } catch (error) {
+    return renderError(error);
+  }
+
+  // IMPORTANT:
+  // Keep redirect OUTSIDE the try/catch block.
+  redirect(`/checkout?bookingId=${booking.id}`);
+};
+
+
+// ----------------------
+// Create review
+// ----------------------
+export const createReviewAction = async (
+  prevState: {
+    propertyId: string;
+    message: string;
+  },
+  formData: FormData
+): Promise<{ propertyId: string; message: string }> => {
+  const user = await getAuthUser();
+
+  try {
+    const rawData = Object.fromEntries(formData);
+
+    const { rating, comment } = validateWithZodSchema(
+      reviewSchema,
+      rawData
+    );
+
+    const profile = await db.profile.findUnique({
+      where: {
+        clerkId: user.id,
+      },
+    });
+
+    if (!profile) {
+      return {
+        propertyId: prevState.propertyId,
+        message: 'Profile not found',
+      };
+    }
+
+    await db.review.create({
+      data: {
+        id: crypto.randomUUID(),
+        rating,
+        comment,
+        profileId: profile.clerkId,
+        propertyId: prevState.propertyId,
+        updatedAt: new Date(),
+      },
+    });
+
+    revalidatePath(`/properties/${prevState.propertyId}`);
+
+    return {
+      propertyId: prevState.propertyId,
+      message: 'Review created successfully',
+    };
+  } catch (error) {
+    return {
+      propertyId: prevState.propertyId,
+      message: renderError(error).message,
+    };
+  }
+};
+
+// ----------------------
+// Fetch reviews
+// ----------------------
+export const fetchReviews = async (propertyId: string) => {
+  const reviews = await db.review.findMany({
+    where: {
+      propertyId,
+    },
+   include: {
+  Property: {
+    select: {
+      name: true,
+      image: true,
+    },
+  },
+  Profile: {
+    select: {
+      profileImage: true,
+      firstName: true,
+    },
+  },
+},
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
+
+  return reviews;
+};
+
+
+// ----------------------
+// Fetch reviews by user
+// ----------------------
+// ----------------------
+// Fetch reviews by user
+// ----------------------
+export const fetchPropertyReviewsByUser = async () => {
+  const user = await getAuthUser();
+
+  const reviews = await db.review.findMany({
+    where: {
+      profileId: user.id,
+    },
+    include: {
+      Property: {
+        select: {
+          name: true,
+          image: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
+
+  return reviews;
 };

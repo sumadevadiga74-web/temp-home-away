@@ -6,8 +6,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 
 function AmenitiesInput({ defaultValue }: { defaultValue?: Amenity[] }) {
   const [selectedAmenities, setSelectedAmenities] = useState<Amenity[]>(
-    defaultValue || amenities
-  );
+  defaultValue ||
+    amenities.map((amenity) => ({
+      ...amenity,
+      selected: false,
+    }))
+);
 
   const handleChange = (amenity: Amenity) => {
     setSelectedAmenities((prev) => {
